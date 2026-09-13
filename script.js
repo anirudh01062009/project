@@ -141,16 +141,716 @@ function duplicateInfo(){$('advancedOutput').innerHTML='<h3>Duplicate Protection
 async function deleteHoliday(date){if(state.user.role!=='Admin')return toast('Only Admin can remove college holidays.','error');const c=await askDialog({title:'Remove College Holiday',message:`Remove the custom holiday on ${date}?`,confirmText:'DELETE',danger:true});if(!c)return;try{await api('holiday',{method:'DELETE',query:'&date='+encodeURIComponent(date)});const j=await api('bootstrap');Object.assign(state,j);renderCalendar();toast('Holiday deleted.')}catch(e){toast(e.message,'error')}}
 async function changePassword(){if(!['Admin','Teacher'].includes(state.user.role))return toast('Only Admin and Teacher can change passwords.','error');const oldp=$('oldPassword').value,newp=$('newPassword').value,conf=$('confirmPassword').value;if(!oldp||!newp)return $('passwordMsg').textContent='Current and new password are required.';if(newp!==conf)return $('passwordMsg').textContent='New passwords do not match.';if(newp.length<4)return $('passwordMsg').textContent='New password must be at least 4 characters.';const btn=buttonOf('CHANGE PASSWORD');setActionBusy(btn,true);try{await api('password',{method:'POST',body:JSON.stringify({old_password:oldp,new_password:newp})});$('oldPassword').value=$('newPassword').value=$('confirmPassword').value='';$('passwordMsg').textContent='Password changed successfully.';toast('Password changed successfully.')}catch(e){$('passwordMsg').textContent=e.message;toast(e.message,'error')}finally{setActionBusy(btn,false)}}
 
-function startWelcome(){
-  const splash=$('splash'),canvas=$('welcomeCanvas');if(!splash||!canvas)return;
-  const ctx=canvas.getContext('2d');const title='WELCOME',sub='SMART ATTENDENCE SYSTEM';let w=innerWidth,h=innerHeight,dpr=Math.min(devicePixelRatio||1,2),frame=0,raf=0;
-  const TAU=Math.PI*2;const rand=(a,b)=>a+Math.random()*(b-a);const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
-  let particles=[],streams=[],resizeTimer;
-  function resize(){w=innerWidth;h=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+'px';canvas.style.height=h+'px';ctx.setTransform(dpr,0,0,dpr,0,0);build();}
-  function build(){
-    particles=Array.from({length:2600},()=>{const a=rand(0,TAU),r=Math.pow(Math.random(),.55)*Math.min(w,h)*.38;return{a,r,phase:rand(0,TAU),z:rand(.25,1),gold:Math.random()<.18,size:rand(.45,1.9)}});
-    streams=Array.from({length:22},(_,i)=>({side:i%2?'right':'left',y:rand(.10,.90),phase:rand(0,TAU),speed:rand(.5,1.1),curve:rand(.7,1.3)}));
+function startWelcome() {
+  const splash = document.getElementById("splash");
+  const canvas = document.getElementById("welcomeCanvas");
+
+  if (!splash || !canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  const DURATION = 10000; // EXACTLY 10 seconds
+  const BLUE = "#159cff";
+  const GOLD = "#ffc45c";
+
+  let W = 0, H = 0;
+  let startTime = performance.now();
+  let raf;
+
+  const particles = [];
+  const PARTICLE_COUNT = 2200;
+
+  function resize() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
+
+  resize();
+  window.addEventListener("resize", resize);
+
+  function rand(a, b) {
+    return a + Math.random() * (b - a);
+  }
+
+  function ease(t) {
+    t = Math.max(0, Math.min(1, t));
+    return t * t * (3 - 2 * t);
+  }
+
+  /*
+   * PARTICLES
+   * Blue particles come from left.
+   * Gold particles come from right.
+   */
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const left = i % 2 === 0;
+
+    particles.push({
+      side: left ? -1 : 1,
+
+      x: left
+        ? rand(-W * 0.35, W * 0.05)
+        : rand(W * 0.95, W * 1.35),
+
+      y: rand(H * 0.20, H * 0.80),
+
+      size: rand(0.6, 2.5),
+      speed: rand(0.35, 1.1),
+      phase: rand(0, Math.PI * 2),
+      curve: rand(-1, 1),
+      depth: rand(0.35, 1),
+
+      color: left ? BLUE : GOLD
+    });
+  }
+
+  /*
+   * FLOWING PARTICLE STREAM
+   */
+  function drawStream(time, side, color) {
+    const centerX = W / 2;
+    const centerY = H / 2;
+
+    ctx.save();
+
+    for (let s = 0; s < 7; s++) {
+      ctx.beginPath();
+
+      for (let i = 0; i <= 100; i++) {
+        const p = i / 100;
+
+        const startX =
+          side < 0
+            ? -W * 0.12
+            : W * 1.12;
+
+        const endX = centerX;
+
+        const x =
+          startX +
+          (endX - startX) * p;
+
+        const wave =
+          Math.sin(
+            p * Math.PI * 3 +
+            time * 0.002 +
+            s
+          ) * (25 + s * 4);
+
+        const y =
+          centerY +
+          wave +
+          Math.sin(p * Math.PI * 2) *
+          side * 30;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+
+      ctx.strokeStyle =
+        color === BLUE
+          ? "rgba(21,156,255,0.18)"
+          : "rgba(255,196,92,0.18)";
+
+      ctx.lineWidth = 1.5 + s * 0.5;
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = color;
+
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  /*
+   * LOTUS / FLOWER SHAPE
+   */
+  function drawFlower(time, progress) {
+    const cx = W / 2;
+    const cy = H * 0.48;
+
+    const bloom = ease(progress);
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    const rotation = time * 0.00025;
+
+    ctx.rotate(rotation);
+
+    const petals = 10;
+
+    for (let i = 0; i < petals; i++) {
+      const a =
+        (Math.PI * 2 / petals) * i;
+
+      ctx.save();
+      ctx.rotate(a);
+
+      const length =
+        90 +
+        Math.sin(i * 1.7) * 18;
+
+      const width = 42;
+
+      const gradient =
+        ctx.createLinearGradient(
+          0,
+          -length,
+          0,
+          length
+        );
+
+      gradient.addColorStop(
+        0,
+        "rgba(70,170,255,0.10)"
+      );
+
+      gradient.addColorStop(
+        0.55,
+        "rgba(50,145,255,0.65)"
+      );
+
+      gradient.addColorStop(
+        1,
+        "rgba(255,195,85,0.82)"
+      );
+
+      ctx.beginPath();
+
+      ctx.moveTo(0, 0);
+
+      ctx.bezierCurveTo(
+        -width,
+        -length * 0.35,
+        -width * 0.7,
+        -length,
+        0,
+        -length
+      );
+
+      ctx.bezierCurveTo(
+        width * 0.7,
+        -length,
+        width,
+        -length * 0.35,
+        0,
+        0
+      );
+
+      ctx.fillStyle = gradient;
+      ctx.globalAlpha = bloom;
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = BLUE;
+
+      ctx.fill();
+
+      ctx.strokeStyle =
+        "rgba(255,210,120,0.75)";
+
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    /*
+     * CENTER LIGHT
+     */
+    const glow =
+      ctx.createRadialGradient(
+        0,
+        0,
+        2,
+        0,
+        0,
+        100
+      );
+
+    glow.addColorStop(
+      0,
+      "rgba(255,240,180,0.95)"
+    );
+
+    glow.addColorStop(
+      0.35,
+      "rgba(40,160,255,0.45)"
+    );
+
+    glow.addColorStop(
+      1,
+      "rgba(0,80,255,0)"
+    );
+
+    ctx.globalAlpha = bloom;
+    ctx.fillStyle = glow;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 110, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /*
+   * TITLE
+   */
+  function drawTitle(time, progress) {
+    const cx = W / 2;
+
+    let alpha = 0;
+
+    if (progress < 0.72) {
+      alpha = 0;
+    } else {
+      alpha = ease((progress - 0.72) / 0.16);
+    }
+
+    /*
+     * Small camera zoom
+     */
+    const zoom =
+      1 +
+      Math.min(
+        0.045,
+        Math.max(0, progress - 0.72) * 0.15
+      );
+
+    ctx.save();
+
+    ctx.translate(cx, H * 0.47);
+    ctx.scale(zoom, zoom);
+
+    /*
+     * WELCOME
+     */
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.font =
+      "900 clamp(54px, 8vw, 112px) Arial";
+
+    ctx.shadowBlur = 25;
+    ctx.shadowColor = BLUE;
+
+    const welcomeGradient =
+      ctx.createLinearGradient(
+        0,
+        -55,
+        0,
+        55
+      );
+
+    welcomeGradient.addColorStop(
+      0,
+      "#ffffff"
+    );
+
+    welcomeGradient.addColorStop(
+      0.45,
+      "#a9e8ff"
+    );
+
+    welcomeGradient.addColorStop(
+      1,
+      "#4da9ff"
+    );
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = welcomeGradient;
+
+    ctx.fillText(
+      "WELCOME",
+      0,
+      0
+    );
+
+    /*
+     * SUBTITLE
+     */
+    ctx.font =
+      "800 clamp(20px, 3vw, 44px) Arial";
+
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = GOLD;
+
+    ctx.fillStyle = GOLD;
+
+    ctx.fillText(
+      "SMART ATTENDENCE SYSTEM",
+      0,
+      65
+    );
+
+    /*
+     * GOLD LINES
+     */
+    ctx.strokeStyle =
+      "rgba(255,196,92,0.9)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.moveTo(-230, 92);
+    ctx.lineTo(-110, 92);
+    ctx.moveTo(110, 92);
+    ctx.lineTo(230, 92);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /*
+   * BOTTOM BLUE LIGHT / FLOOR
+   */
+  function drawFloor(time, progress) {
+    if (progress < 0.55) return;
+
+    const alpha =
+      ease((progress - 0.55) / 0.25);
+
+    const cx = W / 2;
+    const cy = H * 0.84;
+
+    ctx.save();
+
+    const g =
+      ctx.createRadialGradient(
+        cx,
+        cy,
+        0,
+        cx,
+        cy,
+        W * 0.35
+      );
+
+    g.addColorStop(
+      0,
+      `rgba(0,170,255,${0.35 * alpha})`
+    );
+
+    g.addColorStop(
+      1,
+      "rgba(0,60,180,0)"
+    );
+
+    ctx.fillStyle = g;
+
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy,
+      W * 0.32,
+      H * 0.08,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+
+    ctx.strokeStyle =
+      `rgba(30,170,255,${0.7 * alpha})`;
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.ellipse(
+      cx,
+      cy,
+      W * 0.20,
+      H * 0.035,
+      0,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  /*
+   * MAIN ANIMATION LOOP
+   */
+  function animate(now) {
+    const elapsed =
+      now - startTime;
+
+    const progress =
+      Math.min(
+        elapsed / DURATION,
+        1
+      );
+
+    /*
+     * Deep cinematic background
+     */
+    const bg =
+      ctx.createRadialGradient(
+        W / 2,
+        H / 2,
+        0,
+        W / 2,
+        H / 2,
+        Math.max(W, H)
+      );
+
+    bg.addColorStop(
+      0,
+      "#071a38"
+    );
+
+    bg.addColorStop(
+      0.45,
+      "#020b1d"
+    );
+
+    bg.addColorStop(
+      1,
+      "#00030a"
+    );
+
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    /*
+     * Camera-style slow zoom
+     */
+    const camera =
+      1 +
+      0.025 *
+      Math.sin(
+        progress * Math.PI
+      );
+
+    ctx.save();
+
+    ctx.translate(
+      W / 2,
+      H / 2
+    );
+
+    ctx.scale(
+      camera,
+      camera
+    );
+
+    ctx.translate(
+      -W / 2,
+      -H / 2
+    );
+
+    /*
+     * Side particle streams
+     */
+    drawStream(
+      elapsed,
+      -1,
+      BLUE
+    );
+
+    drawStream(
+      elapsed,
+      1,
+      GOLD
+    );
+
+    /*
+     * Individual particles
+     */
+    for (const p of particles) {
+      let x = p.x;
+      let y = p.y;
+
+      const distance =
+        Math.abs(
+          W / 2 - x
+        );
+
+      const flow =
+        Math.sin(
+          elapsed * 0.002 * p.speed +
+          p.phase
+        );
+
+      y +=
+        flow *
+        22 *
+        p.depth;
+
+      /*
+       * Pull particles into flower
+       */
+      if (progress >= 0.18) {
+        const pull =
+          ease(
+            Math.min(
+              1,
+              (progress - 0.18) /
+              0.30
+            )
+          );
+
+        const targetX =
+          W / 2 +
+          Math.cos(
+            p.phase +
+            elapsed * 0.0004
+          ) *
+          180 *
+          p.depth;
+
+        const targetY =
+          H * 0.48 +
+          Math.sin(
+            p.phase * 2
+          ) *
+          100 *
+          p.depth;
+
+        x +=
+          (targetX - x) *
+          pull *
+          0.55;
+
+        y +=
+          (targetY - y) *
+          pull *
+          0.55;
+      }
+
+      /*
+       * Continue orbiting after flower forms
+       */
+      if (progress > 0.48) {
+        const orbit =
+          (progress - 0.48) *
+          Math.PI *
+          1.8;
+
+        const ox =
+          Math.cos(
+            p.phase + orbit
+          ) *
+          160 *
+          p.depth;
+
+        const oy =
+          Math.sin(
+            p.phase + orbit
+          ) *
+          75 *
+          p.depth;
+
+        x =
+          W / 2 +
+          (x - W / 2) * 0.45 +
+          ox * 0.55;
+
+        y =
+          H * 0.48 +
+          (y - H * 0.48) * 0.45 +
+          oy * 0.55;
+      }
+
+      const glow =
+        p.color === BLUE
+          ? "rgba(40,170,255,0.85)"
+          : "rgba(255,200,100,0.9)";
+
+      ctx.fillStyle = glow;
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = p.color;
+
+      ctx.beginPath();
+
+      ctx.arc(
+        x,
+        y,
+        p.size * p.depth,
+        0,
+        Math.PI * 2
+      );
+
+      ctx.fill();
+    }
+
+    /*
+     * Flower appears from 2–7 seconds
+     */
+    const flowerProgress =
+      Math.min(
+        1,
+        Math.max(
+          0,
+          (progress - 0.22) /
+          0.42
+        )
+      );
+
+    drawFlower(
+      elapsed,
+      flowerProgress
+    );
+
+    drawFloor(
+      elapsed,
+      progress
+    );
+
+    drawTitle(
+      elapsed,
+      progress
+    );
+
+    ctx.restore();
+
+    /*
+     * End smoothly at exactly 10 sec
+     */
+    if (progress < 1) {
+      raf =
+        requestAnimationFrame(
+          animate
+        );
+    } else {
+      /*
+       * Keep final frame visible briefly,
+       * then transition to dashboard.
+       */
+      setTimeout(() => {
+        splash.style.transition =
+          "opacity .55s ease";
+
+        splash.style.opacity = "0";
+
+        setTimeout(() => {
+          cancelAnimationFrame(raf);
+
+          window.removeEventListener(
+            "resize",
+            resize
+          );
+
+          splash.remove();
+        }, 600);
+      }, 250);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
   function flowerPoint(a,r,t){const pet=1+.48*Math.cos(6*a+t*.8);return{x:Math.cos(a)*r*pet,y:Math.sin(a)*r*pet*.62}}
   function glowCircle(x,y,r,color,alpha){const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,color.replace('ALPHA',alpha));g.addColorStop(1,color.replace('ALPHA','0'));ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill()}
   function textReveal(text,y,progress,fontSize,fill){ctx.font=`900 ${fontSize}px Segoe UI,Arial,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';const total=ctx.measureText(text).width;const startX=w/2-total/2;ctx.save();ctx.beginPath();ctx.rect(startX-30,y-fontSize*1.2,total*progress+60,fontSize*2.4);ctx.clip();ctx.fillStyle=fill;ctx.shadowColor=fill;ctx.shadowBlur=28;ctx.fillText(text,w/2,y);ctx.restore();}
