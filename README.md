@@ -70,3 +70,5 @@ Change production credentials through Vercel environment variables before real u
 
 ## Browser face recognition note
 The desktop Python version uses OpenCV Haar Cascade + LBPH. A normal browser cannot execute that desktop OpenCV/LBPH pipeline directly, so the web build uses browser-compatible face descriptors while preserving the registration/recognition attendance workflow.
+
+Vercel deployment update
