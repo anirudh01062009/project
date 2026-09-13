@@ -438,8 +438,8 @@ function startWelcome() {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    ctx.font =
-      "900 clamp(54px, 8vw, 112px) Arial";
+const titleSize = Math.max(54, Math.min(112, W * 0.085));
+ctx.font = `900 ${titleSize}px Arial`;
 
     ctx.shadowBlur = 25;
     ctx.shadowColor = BLUE;
@@ -479,8 +479,8 @@ function startWelcome() {
     /*
      * SUBTITLE
      */
-    ctx.font =
-      "800 clamp(20px, 3vw, 44px) Arial";
+    const subSize = Math.max(20, Math.min(44, W * 0.034));
+ctx.font = `800 ${subSize}px Arial`;
 
     ctx.shadowBlur = 16;
     ctx.shadowColor = GOLD;
