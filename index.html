@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Attendance System</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+<script defer src="script.js"></script>
+</head>
+<body>
+<div id="splash" class="splash"><canvas id="welcomeCanvas"></canvas><div class="welcome-overlay"><div class="welcome-status">SMART ATTENDANCE • SECURE • ROLE-BASED</div></div></div>
+<div id="toastRoot" class="toast-root" aria-live="polite" aria-atomic="true"></div><div id="actionDialog" class="action-dialog hidden" aria-hidden="true"><div class="dialog-card"><button class="modal-close" type="button" onclick="dialogClose()">×</button><div class="login-accent">SMART ATTENDANCE</div><h3 id="dialogTitle"></h3><p id="dialogMessage"></p><div id="dialogFields"></div><div class="dialog-actions"><button type="button" class="ghost" onclick="dialogClose()">CANCEL</button><button id="dialogConfirm" type="button">OK</button></div></div></div><div id="login" class="modal hidden" aria-hidden="true"><div class="login-card"><button class="modal-close" type="button" onclick="closeStaffLogin()">×</button><div class="login-accent">STAFF ACCESS</div>
+  <div class="logo">◈</div><h1>Staff Login</h1><p>Admin and Teacher access</p>
+  <label>Username</label><input id="username" placeholder="admin or teacher" autocomplete="username">
+  <label>Password</label><input id="password" type="password" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+  <button class="primary-login" type="button" onclick="login()">LOGIN</button><div class="login-help">Viewer access is already active. No password is required for Viewer.</div>
+  <div id="loginMsg"></div>
+</div></div>
+
+<div id="app" class="hidden"><div class="app-shell"><aside class="sidebar"><div class="brand"><div class="brand-mark">◈</div><div><strong>SMART ATTENDANCE</strong><small>SYSTEM 2026</small></div></div><div class="nav-label">WORKSPACE</div><nav id="nav"></nav><div class="sidebar-footer"><span>●</span> System Online</div></aside><div class="workspace"><header><div><b>SMART ATTENDANCE SYSTEM</b><span id="dateNow"></span><span id="clock"></span></div><div><span id="roleBadge"></span><button id="staffLoginBtn" class="staff-login" type="button" onclick="openStaffLogin()">ADMIN / TEACHER LOGIN</button><button class="danger" onclick="logout()">LOGOUT</button></div></header>
+<main>
+<section id="dashboard" class="page"><div class="page-title"><div><h2>Dashboard</h2><p>Live system overview and today's attendance.</p></div></div>
+<div class="stats"><div><b id="statStudents">0</b><span>Registered Students</span></div><div><b id="statPresent">0</b><span>Present Today</span></div><div><b id="statLate">0</b><span>Late Today</span></div><div><b id="statOut">0</b><span>Temporary OUT</span></div></div>
+<div class="panel"><div class="panel-head"><h3>Live Lecture Status</h3><span id="holidayBanner"></span></div><div id="liveLecture"></div></div>
+<div class="panel"><div class="panel-head"><h3>Today's Attendance</h3><button onclick="showPage('reports')">Open Full Report</button></div><div class="table-scroll"><table id="dashTable"></table></div></div></section>
+
+<section id="attendance" class="page hidden"><div class="page-title"><div><h2>Start Attendance</h2><p>Teacher/Admin only. Browser face recognition is used for web compatibility.</p></div></div>
+<div class="toolbar"><select id="lectureSelect"></select><button onclick="startCamera()">START CAMERA</button><button onclick="stopCamera()" class="danger">STOP</button><button onclick="tempOutRequest()">TEMP OUT / IN</button><button onclick="finalOutVisible()">FINAL OUT</button></div>
+<div class="camera-wrap"><video id="video" autoplay muted playsinline></video><canvas id="overlay"></canvas><div id="cameraStatus">Camera stopped</div></div>
+<p class="hint">Rules: first 5 minutes = Present; after 5 minutes until lecture end = Late; last 5 minutes = Final OUT. Duplicate IN is blocked. Attendance is disabled on holidays/Sundays.</p>
+<div class="panel"><h3>Movement / Attendance Events</h3><div class="table-scroll"><table id="eventTable"></table></div></div></section>
+
+<section id="students" class="page hidden"><div class="page-title"><div><h2>Students</h2><p>Student list is visible to all roles. Registration/update/delete is Admin only.</p></div><span class="role-note admin-only">ADMIN CONTROLS</span></div>
+<div id="studentAdminBox" class="panel admin-only"><h3>Register / Update Student</h3><div class="gridform"><input id="sid" placeholder="Student ID"><input id="sname" placeholder="Name"><input id="roll" placeholder="Roll No"><input id="course" placeholder="Course"><input id="semester" placeholder="Semester"><input id="section" placeholder="Section"><input id="pmobile" placeholder="Parent Mobile"><input id="pemail" placeholder="Parent Email"></div><div class="toolbar"><button onclick="captureFaceForStudent()">CAPTURE FACE</button><button onclick="saveStudent()">SAVE / UPDATE</button><button class="danger" onclick="deleteStudent()">DELETE REGISTERED STUDENT</button></div><div class="camera-small"><video id="regVideo" autoplay muted playsinline></video><span id="regStatus">No face captured</span></div></div>
+<div class="panel"><h3>Registered Student List</h3><div class="table-scroll"><table id="studentTable"></table></div></div></section>
+
+<section id="timetable" class="page hidden"><div class="page-title"><div><h2>8-Lecture Timetable</h2><p>Timetable is visible to everyone. Add/edit is Admin only.</p></div></div>
+<div id="timetableAdminBox" class="panel admin-only"><h3>Admin Timetable Editor</h3><div class="gridform"><input id="tn" type="number" min="1" max="8" placeholder="Lecture No"><input id="tsub" placeholder="Subject"><input id="tstart" type="time"><input id="tend" type="time"></div><button onclick="saveTimetable()">SAVE TIMETABLE</button></div>
+<div class="panel"><div class="panel-head"><h3>Lecture Schedule</h3><span>8 slots</span></div><div class="table-scroll"><table id="timeTable"></table></div></div></section>
+
+<section id="reports" class="page hidden"><div class="page-title"><div><h2>Reports</h2><p>Attendance and movement reports are read-only for Viewer.</p></div></div><div class="toolbar"><select id="statusFilter"><option>All</option><option>Present</option><option>Late</option><option>Absent</option></select><input id="searchReport" placeholder="Search student/date/lecture"><button onclick="renderReports()">SEARCH</button><button onclick="exportCSV()">EXPORT CSV</button><button onclick="window.print()">PRINT / PDF</button></div><div class="table-scroll"><table id="reportTable"></table></div></section>
+
+<section id="settings" class="page hidden"><div class="page-title"><div><h2>Settings</h2><p>Admin and Teacher can change their own passwords. Viewer has no password.</p></div></div><div class="panel"><h3>Change Password</h3><div class="gridform"><input id="oldPassword" type="password" placeholder="Current password"><input id="newPassword" type="password" placeholder="New password"><input id="confirmPassword" type="password" placeholder="Confirm new password"></div><button onclick="changePassword()">CHANGE PASSWORD</button><div id="passwordMsg"></div></div></section>
+
+<section id="calendar" class="page hidden"><div class="page-title"><div><h2>Holiday / Academic Calendar</h2><p>Holiday list is visible to Admin, Teacher and Viewer. Only Admin can add/remove college holidays.</p></div></div>
+<div id="holidayAdminBox" class="panel admin-only"><h3>Add College Holiday</h3><div class="gridform"><input id="hdate" type="date"><input id="hname" placeholder="Holiday name"><input id="htype" value="College Custom"><button onclick="addHoliday()">ADD HOLIDAY</button></div></div>
+<div class="panel"><div class="panel-head"><h3>Holiday List</h3><span>Automatic + College Custom</span></div><div class="table-scroll"><table id="holidayTable"></table></div></div></section>
+
+<section id="notifications" class="page hidden"><div class="page-title"><div><h2>Parent / Student Notification Center</h2><p>Teacher/Admin can queue notifications; Viewer can view history.</p></div></div><div id="notifAdminBox" class="panel teacher-admin"><div class="gridform"><select id="notifStudent"></select><select id="notifChannel"><option>WhatsApp</option><option>Email</option><option>SMS</option></select><input id="notifSubject" placeholder="Subject"><textarea id="notifMessage" placeholder="Message"></textarea><button onclick="queueNotification()">QUEUE NOTIFICATION</button></div></div><div class="panel"><div class="table-scroll"><table id="notifTable"></table></div></div></section>
+
+<section id="advanced" class="page hidden"><div class="page-title"><div><h2>Advanced Features Center</h2><p>Actions are permission controlled.</p></div></div><div class="feature-grid"><button onclick="showPerformance()">📈 Performance</button><button onclick="showLowAlerts()">🔔 Low Attendance</button><button onclick="showProfile()">🧑‍🎓 Student Profile</button><button class="admin-only" onclick="showAudit()">🛡 Audit Log</button><button onclick="systemHealth()">🩺 System Health</button><button onclick="tamperInfo()">🔐 Tamper Protection</button><button class="admin-only" onclick="qrInfo()">▦ Student QR</button><button class="admin-only" onclick="backupInfo()">💾 Backup / Restore</button><button class="admin-only" onclick="faceQuality()">🙂 Face Quality</button><button onclick="duplicateInfo()">♻ Duplicate Protection</button></div><div id="advancedOutput" class="panel"></div></section>
+</main></div></div></div></body></html>
